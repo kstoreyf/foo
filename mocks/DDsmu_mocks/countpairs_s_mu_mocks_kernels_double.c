@@ -1,3 +1,7 @@
+/* This file is auto-generated from countpairs_s_mu_mocks_kernels.c.src */
+#ifndef DOUBLE_PREC
+#define DOUBLE_PREC
+#endif
 // # -*- mode: c -*-
 /* File: countpairs_s_mu_mocks_kernels.c */
 /*
@@ -18,21 +22,19 @@
 #include "function_precision.h"
 #include "utils.h"
 
-#include "weight_functions_DOUBLE.h"
+#include "weight_functions_double.h"
 
 #if defined(__AVX__)
 #include "avx_calls.h"
 
-
-printf("yo\n")
-static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, DOUBLE *x0, DOUBLE *y0, DOUBLE *z0, DOUBLE *d0, const weight_struct_DOUBLE *weights0,
-                                                              const int64_t N1, DOUBLE *x1, DOUBLE *y1, DOUBLE *z1, DOUBLE *d1, const weight_struct_DOUBLE *weights1,
+static inline int countpairs_s_mu_mocks_avx_intrinsics_double(const int64_t N0, double *x0, double *y0, double *z0, double *d0, const weight_struct_double *weights0,
+                                                              const int64_t N1, double *x1, double *y1, double *z1, double *d1, const weight_struct_double *weights1,
                                                               const int same_cell,
                                                               const int fast_divide,
-                                                              const DOUBLE smax, const DOUBLE smin, const int nsbin,const int nmu_bins,
-                                                              const DOUBLE *supp_sqr, const DOUBLE mu_max,
-                                                              DOUBLE *src_savg,
-                                                              uint64_t *src_npairs, DOUBLE *src_weightavg, const weight_method_t weight_method)
+                                                              const double smax, const double smin, const int nsbin,const int nmu_bins,
+                                                              const double *supp_sqr, const double mu_max,
+                                                              double *src_savg, uint64_t *src_npairs, double *src_projpairs,
+                                                              double *src_projpairs_tensor, double *src_weightavg, const weight_method_t weight_method)
 {
     if(N0 == 0 || N1 == 0) {
         return EXIT_SUCCESS;
@@ -46,23 +48,27 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
     const int32_t need_weightavg = src_weightavg != NULL;
 
     const int64_t totnbins = (nmu_bins+1)*(nsbin+1);
-    const DOUBLE sqr_mumax = mu_max*mu_max;
-    const DOUBLE sqr_smax  = smax*smax;
-    const DOUBLE sqr_smin  = smin*smin;
-	
-	printf("yo2\n")
+    //TODO: make nprojbins parameter
+    const int64_t nprojbins = totnbins;
+    const double sqr_mumax = mu_max*mu_max;
+    const double sqr_smax  = smax*smax;
+    const double sqr_smin  = smin*smin;
+
+	//printf("yo double\n");
 
     AVX_FLOATS m_supp_sqr[nsbin];
     AVX_FLOATS m_kbin[nsbin];
     for(int i=0;i<nsbin;i++) {
         m_supp_sqr[i] = AVX_SET_FLOAT(supp_sqr[i]);
-        m_kbin[i] = AVX_SET_FLOAT((DOUBLE) i);
+        m_kbin[i] = AVX_SET_FLOAT((double) i);
     }
 
     uint64_t npairs[totnbins];
-    const DOUBLE dmu = mu_max/(DOUBLE) nmu_bins;
-    const DOUBLE inv_dmu = 1.0/dmu;
-    DOUBLE savg[totnbins], weightavg[totnbins];
+    const double dmu = mu_max/(double) nmu_bins;
+    const double inv_dmu = 1.0/dmu;
+    double savg[totnbins], weightavg[totnbins], projpairs[nprojbins];
+    //double projpairs_tensor[nprojbins][nprojbins];
+    double projpairs_tensor[nprojbins*nprojbins];
     for(int i=0;i<totnbins;i++) {
         npairs[i] = ZERO;
         if(need_savg) {
@@ -72,13 +78,21 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
             weightavg[i] = ZERO;
         }
     }
+    for(int i=0;i<nprojbins;i++) {
+        projpairs[i] = ZERO;
+        for(int j=0;j<nprojbins;j++) {
+            projpairs_tensor[i*nprojbins+j] = ZERO;
+        }
+    }
+
+
 
     // A copy whose pointers we can advance
-    weight_struct_DOUBLE local_w0 = {.weights={NULL}, .num_weights=0},
+    weight_struct_double local_w0 = {.weights={NULL}, .num_weights=0},
                          local_w1 = {.weights={NULL}, .num_weights=0};
-    pair_struct_DOUBLE pair = {.num_weights=0};
-    avx_weight_func_t_DOUBLE avx_weight_func = NULL;
-    weight_func_t_DOUBLE fallback_weight_func = NULL;
+    pair_struct_double pair = {.num_weights=0};
+    avx_weight_func_t_double avx_weight_func = NULL;
+    weight_func_t_double fallback_weight_func = NULL;
     if(need_weightavg){
         // Same particle list, new copy of num_weights pointers into that list
         local_w0 = *weights0;
@@ -86,16 +100,16 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
 
         pair.num_weights = local_w0.num_weights;
 
-        avx_weight_func = get_avx_weight_func_by_method_DOUBLE(weight_method);
-        fallback_weight_func = get_weight_func_by_method_DOUBLE(weight_method);
+        avx_weight_func = get_avx_weight_func_by_method_double(weight_method);
+        fallback_weight_func = get_weight_func_by_method_double(weight_method);
     }
 
     int64_t prev_j = 0, n_off = 0;
     for(int64_t i=0;i<N0;i++) {
-        const DOUBLE xpos = *x0++;
-        const DOUBLE ypos = *y0++;
-        const DOUBLE zpos = *z0++;
-        const DOUBLE dpos = *d0++;
+        const double xpos = *x0++;
+        const double ypos = *y0++;
+        const double zpos = *z0++;
+        const double dpos = *d0++;
         for(int w = 0; w < pair.num_weights; w++){
             // local_w0.weights[w] is a pointer to a float in the particle list of weights,
             // just as x0 is a pointer into the list of x-positions.
@@ -109,7 +123,7 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
             j = i+1;
         } else {
             for(;prev_j<N1;prev_j++) {
-                const DOUBLE dz = *d1 - dpos;
+                const double dz = *d1 - dpos;
                 if(dz > -smax) break;
                 d1++; n_off++;
             }
@@ -118,10 +132,10 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
             }
             j = prev_j;
         }
-        DOUBLE *locald1 = d1;
-        DOUBLE *localx1 = x1 + n_off;
-        DOUBLE *localy1 = y1 + n_off;
-        DOUBLE *localz1 = z1 + n_off;
+        double *locald1 = d1;
+        double *localx1 = x1 + n_off;
+        double *localy1 = y1 + n_off;
+        double *localz1 = z1 + n_off;
         for(int w = 0; w < local_w1.num_weights; w++){
             local_w1.weights[w] = weights1->weights[w] + n_off;
         }
@@ -137,16 +151,16 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
 
         union float8{
             AVX_FLOATS m_sep;
-            DOUBLE sep[AVX_NVEC];
+            double sep[AVX_NVEC];
         };
 
         const AVX_FLOATS m_sqr_smax = AVX_SET_FLOAT(sqr_smax);
         const AVX_FLOATS m_sqr_smin = AVX_SET_FLOAT(sqr_smin);
         const AVX_FLOATS m_sqr_mumax = AVX_SET_FLOAT(sqr_mumax);
         const AVX_FLOATS m_inv_dmu = AVX_SET_FLOAT(inv_dmu);
-        const AVX_FLOATS m_nmu_bins = AVX_SET_FLOAT((DOUBLE) nmu_bins);
+        const AVX_FLOATS m_nmu_bins = AVX_SET_FLOAT((double) nmu_bins);
         const AVX_FLOATS m_zero = AVX_SET_FLOAT(ZERO);
-        const AVX_FLOATS m_one = AVX_SET_FLOAT((DOUBLE) 1);
+        const AVX_FLOATS m_one = AVX_SET_FLOAT((double) 1);
 
         for(;j<=(N1-AVX_NVEC);j+=AVX_NVEC){
             const AVX_FLOATS m_x2 = AVX_LOAD_FLOATS_UNALIGNED(localx1);
@@ -166,7 +180,7 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
 
             union float8_weights{
                 AVX_FLOATS m_weights;
-                DOUBLE weights[NVEC];
+                double weights[NVEC];
             };
             union float8_weights union_mweight;
 
@@ -212,7 +226,7 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
                     //The divide is the actual operation we need
                     // but divides are about 10x slower than multiplies. So, I am replacing it
                     //with a approximate reciprocal in floating point
-                    // + 2 iterations of newton-raphson in case of DOUBLE
+                    // + 2 iterations of newton-raphson in case of double
                 } else {
                     //following blocks do an approximate reciprocal followed by two iterations of Newton-Raphson
 
@@ -234,7 +248,7 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
                   //Now improve the accuracy of the divide with newton-raphson.
 
                   //Ist iteration of NewtonRaphson
-                  AVX_FLOATS two = AVX_SET_FLOAT((DOUBLE) 2.0);
+                  AVX_FLOATS two = AVX_SET_FLOAT((double) 2.0);
                   AVX_FLOATS rc1 = AVX_MULTIPLY_FLOATS(rc,
                                                        AVX_SUBTRACT_FLOATS(two,
                                                                            AVX_MULTIPLY_FLOATS(m_sqr_norm_l_norm_s,rc)));
@@ -281,7 +295,7 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
             }
 
             const AVX_FLOATS m_mask = m_mask_left;
-            AVX_FLOATS m_sbin = AVX_SET_FLOAT((DOUBLE) 0);
+            AVX_FLOATS m_sbin = AVX_SET_FLOAT((double) 0);
             for(int kbin=nsbin-1;kbin>=1;kbin--) {
                 const AVX_FLOATS m_mask_low = AVX_COMPARE_FLOATS(m_sqr_s,m_supp_sqr[kbin-1],_CMP_GE_OQ);
                 const AVX_FLOATS m_bin_mask = AVX_BITWISE_AND(m_mask_low,m_mask_left);
@@ -300,32 +314,37 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
             union int8 union_finalbin;
             union_finalbin.m_ibin = AVX_TRUNCATE_FLOAT_TO_INT(m_binproduct);
 
+
+
 #if  __INTEL_COMPILER
 #pragma unroll(AVX_NVEC)
 #endif
             for(int jj=0;jj<AVX_NVEC;jj++) {
                 const int ibin=union_finalbin.ibin[jj];
-
+                //TODO: handle weight better if need for projpairs
+                const double weight = union_mweight.weights[jj];
                 npairs[ibin]++;
                 if(need_savg) {
                     savg[ibin] += union_msep.sep[jj];
                 }
                 if(need_weightavg){
-                    const DOUBLE weight = union_mweight.weights[jj];
+                    //const double weight = union_mweight.weights[jj];
                     weightavg[ibin] += weight;
                 }
+                //TODO: separate when doing general proj
+                projpairs[ibin] += weight;
             }
         }//AVX j loop
 
         //Take care of the remainder
         for(;j<N1;j++) {
-            const DOUBLE parx = xpos + *localx1;
-            const DOUBLE pary = ypos + *localy1;
-            const DOUBLE parz = zpos + *localz1;
+            const double parx = xpos + *localx1;
+            const double pary = ypos + *localy1;
+            const double parz = zpos + *localz1;
 
-            const DOUBLE perpx = xpos - *localx1;
-            const DOUBLE perpy = ypos - *localy1;
-            const DOUBLE perpz = zpos - *localz1;
+            const double perpx = xpos - *localx1;
+            const double perpy = ypos - *localy1;
+            const double perpz = zpos - *localz1;
             /*
               s := (perpx, perpy, perpz)
               l := 1/2 (parx, pary, parz)  //ignoring the factor 1/2 since it cancels out in both numerator and denominator
@@ -335,7 +354,7 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
                        := (x1^2 + y1^2 + z1^2) - (x2^2 + y2^2 + z2^2)
                        := d1^2 - d2^2
             */
-            const DOUBLE s_dot_l = dpos*dpos - (*locald1) * (*locald1);// s \dot l
+            const double s_dot_l = dpos*dpos - (*locald1) * (*locald1);// s \dot l
 
             localx1++;localy1++;localz1++;locald1++;
 
@@ -344,14 +363,14 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
             }
 
 
-            const DOUBLE sqr_s = perpx*perpx + perpy*perpy + perpz*perpz;
+            const double sqr_s = perpx*perpx + perpy*perpy + perpz*perpz;
             if(sqr_s >= sqr_smax || sqr_s < sqr_smin) continue;
 
-            const DOUBLE norm_l = (parx*parx + pary*pary + parz*parz);// := |l|^2
-            const DOUBLE sqr_s_dot_l = s_dot_l * s_dot_l;
-            const DOUBLE sqr_mu = sqr_s_dot_l/(norm_l * sqr_s);
+            const double norm_l = (parx*parx + pary*pary + parz*parz);// := |l|^2
+            const double sqr_s_dot_l = s_dot_l * s_dot_l;
+            const double sqr_mu = sqr_s_dot_l/(norm_l * sqr_s);
             const int mubin  = (sqr_mu >= sqr_mumax) ? nmu_bins:(int) (SQRT(sqr_mu)*inv_dmu);
-            DOUBLE s, pairweight;
+            double s, pairweight;
             if(need_savg) {
                 s = SQRT(sqr_s);
             }
@@ -377,6 +396,8 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
                     if(need_weightavg){
                         weightavg[ibin] += pairweight;
                     }
+                    //TODO: make general
+                    projpairs[ibin] += pairweight;
                     break;
                 }
             }
@@ -392,6 +413,12 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
             src_weightavg[i] += weightavg[i];
         }
     }
+    for(int i=0;i<nprojbins;i++) {
+        src_projpairs[i] += projpairs[i];
+        for(int j=0;j<nprojbins;j++) {
+            src_projpairs_tensor[i*nprojbins+j] += projpairs_tensor[i*nprojbins+j];
+        }
+    }
     return EXIT_SUCCESS;
 }
 #endif //AVX
@@ -400,14 +427,15 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
 #if defined(__SSE4_2__)
 #include "sse_calls.h"
 
-static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, DOUBLE *x0, DOUBLE *y0, DOUBLE *z0, DOUBLE *d0, const weight_struct_DOUBLE *weights0,
-                                                              const int64_t N1, DOUBLE *x1, DOUBLE *y1, DOUBLE *z1, DOUBLE *d1, const weight_struct_DOUBLE *weights1,
+static inline int countpairs_s_mu_mocks_sse_intrinsics_double(const int64_t N0, double *x0, double *y0, double *z0, double *d0, const weight_struct_double *weights0,
+                                                              const int64_t N1, double *x1, double *y1, double *z1, double *d1, const weight_struct_double *weights1,
                                                               const int same_cell,
                                                               const int fast_divide,
-                                                              const DOUBLE smax, const DOUBLE smin, const int nsbin,
-                                                              const int nmu_bins, const DOUBLE *supp_sqr, const DOUBLE mu_max,
-                                                              DOUBLE *src_savg, uint64_t *src_npairs,
-                                                              DOUBLE *src_weightavg, const weight_method_t weight_method)
+                                                              const double smax, const double smin, const int nsbin,
+                                                              const int nmu_bins, const double *supp_sqr, const double mu_max,
+                                                              double *src_savg, uint64_t *src_npairs, double *src_projpairs,
+                                                              double *src_projpairs_tensor,
+                                                              double *src_weightavg, const weight_method_t weight_method)
 {
     if(N0 == 0 || N1 == 0) {
         return EXIT_SUCCESS;
@@ -421,21 +449,23 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
     (void) fast_divide; //unused
 
     const int64_t totnbins = (nmu_bins+1)*(nsbin+1);
-    const DOUBLE sqr_mumax = mu_max*mu_max;
-    const DOUBLE sqr_smax  = smax*smax;
-    const DOUBLE sqr_smin  = smin*smin;
+    const int64_t nprojbins = totnbins;
+    const double sqr_mumax = mu_max*mu_max;
+    const double sqr_smax  = smax*smax;
+    const double sqr_smin  = smin*smin;
 
     SSE_FLOATS m_supp_sqr[nsbin];
     SSE_FLOATS m_kbin[nsbin];
     for(int i=0;i<nsbin;i++) {
         m_supp_sqr[i] = SSE_SET_FLOAT(supp_sqr[i]);
-        m_kbin[i] = SSE_SET_FLOAT((DOUBLE) i);
+        m_kbin[i] = SSE_SET_FLOAT((double) i);
     }
 
     uint64_t npairs[totnbins];
-    const DOUBLE dmu = mu_max/(DOUBLE) nmu_bins;
-    const DOUBLE inv_dmu = 1.0/dmu;
-    DOUBLE savg[totnbins], weightavg[totnbins];
+    const double dmu = mu_max/(double) nmu_bins;
+    const double inv_dmu = 1.0/dmu;
+    double savg[totnbins], weightavg[totnbins], projpairs[nprojbins];
+    double projpairs_tensor[nprojbins*nprojbins];
     for(int64_t i=0;i<totnbins;i++) {
         npairs[i] = ZERO;
         if (need_savg) {
@@ -445,13 +475,20 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
             weightavg[i] = ZERO;
         }
     }
+    for(int64_t i=0;i<nprojbins;i++) {
+        projpairs[i] = ZERO;
+        for(int j=0;j<nprojbins;j++) {
+            projpairs_tensor[i*nprojbins+j] = ZERO;
+        }
+    }
+
 
     // A copy whose pointers we can advance
-    weight_struct_DOUBLE local_w0 = {.weights={NULL}, .num_weights=0},
+    weight_struct_double local_w0 = {.weights={NULL}, .num_weights=0},
                          local_w1 = {.weights={NULL}, .num_weights=0};
-    pair_struct_DOUBLE pair = {.num_weights=0};
-    sse_weight_func_t_DOUBLE sse_weight_func = NULL;
-    weight_func_t_DOUBLE fallback_weight_func = NULL;
+    pair_struct_double pair = {.num_weights=0};
+    sse_weight_func_t_double sse_weight_func = NULL;
+    weight_func_t_double fallback_weight_func = NULL;
     if(need_weightavg){
       // Same particle list, new copy of num_weights pointers into that list
       local_w0 = *weights0;
@@ -459,16 +496,16 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
 
       pair.num_weights = local_w0.num_weights;
 
-      sse_weight_func = get_sse_weight_func_by_method_DOUBLE(weight_method);
-      fallback_weight_func = get_weight_func_by_method_DOUBLE(weight_method);
+      sse_weight_func = get_sse_weight_func_by_method_double(weight_method);
+      fallback_weight_func = get_weight_func_by_method_double(weight_method);
     }
 
     int64_t prev_j=0, n_off = 0;
     for(int64_t i=0;i<N0;i++) {
-        const DOUBLE xpos = *x0++;
-        const DOUBLE ypos = *y0++;
-        const DOUBLE zpos = *z0++;
-        const DOUBLE dpos = *d0++;
+        const double xpos = *x0++;
+        const double ypos = *y0++;
+        const double zpos = *z0++;
+        const double dpos = *d0++;
         for(int w = 0; w < pair.num_weights; w++){
             // local_w0.weights[w] is a pointer to a float in the particle list of weights,
             // just as x0 is a pointer into the list of x-positions.
@@ -482,7 +519,7 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
             j = i+1;
         } else {
             for(;prev_j<N1;prev_j++) {
-                const DOUBLE dz = *d1 - dpos;
+                const double dz = *d1 - dpos;
                 if(dz > -smax) break;
                 d1++; n_off++;
             }
@@ -491,10 +528,10 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
             }
             j = prev_j;
         }
-        DOUBLE *locald1 = d1;
-        DOUBLE *localx1 = x1 + n_off;
-        DOUBLE *localy1 = y1 + n_off;
-        DOUBLE *localz1 = z1 + n_off;
+        double *locald1 = d1;
+        double *localx1 = x1 + n_off;
+        double *localy1 = y1 + n_off;
+        double *localz1 = z1 + n_off;
         for(int w = 0; w < local_w1.num_weights; w++){
             local_w1.weights[w] = weights1->weights[w] + n_off;
         }
@@ -512,16 +549,16 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
 
         union float8{
             SSE_FLOATS m_sep;
-            DOUBLE sep[SSE_NVEC];
+            double sep[SSE_NVEC];
         };
 
         const SSE_FLOATS m_sqr_smax = SSE_SET_FLOAT(sqr_smax);
         const SSE_FLOATS m_sqr_smin = SSE_SET_FLOAT(sqr_smin);
         const SSE_FLOATS m_sqr_mumax = SSE_SET_FLOAT(sqr_mumax);
         const SSE_FLOATS m_inv_dmu = SSE_SET_FLOAT(inv_dmu);
-        const SSE_FLOATS m_nmu_bins = SSE_SET_FLOAT((DOUBLE) nmu_bins);
+        const SSE_FLOATS m_nmu_bins = SSE_SET_FLOAT((double) nmu_bins);
         const SSE_FLOATS m_zero = SSE_SET_FLOAT(ZERO);
-        const SSE_FLOATS m_one = SSE_SET_FLOAT((DOUBLE) 1);
+        const SSE_FLOATS m_one = SSE_SET_FLOAT((double) 1);
 
         for(;j<=(N1-SSE_NVEC);j+=SSE_NVEC){
             const SSE_FLOATS m_x2 = SSE_LOAD_FLOATS_UNALIGNED(localx1);
@@ -541,7 +578,7 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
 
             union float4_weights{
                 SSE_FLOATS m_weights;
-                DOUBLE weights[SSE_NVEC];
+                double weights[SSE_NVEC];
             };
             union float4_weights union_mweight;
 
@@ -611,7 +648,7 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
             }
 
             const SSE_FLOATS m_mask = m_mask_left;
-            SSE_FLOATS m_sbin = SSE_SET_FLOAT((DOUBLE) 0);
+            SSE_FLOATS m_sbin = SSE_SET_FLOAT((double) 0);
             for(int kbin=nsbin-1;kbin>=1;kbin--) {
                 const SSE_FLOATS m_mask_low = SSE_COMPARE_FLOATS_GE(m_sqr_s,m_supp_sqr[kbin-1]);
                 const SSE_FLOATS m_bin_mask = SSE_BITWISE_AND(m_mask_low,m_mask_left);
@@ -635,44 +672,47 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
 #endif
             for(int jj=0;jj<SSE_NVEC;jj++) {
                 const int ibin=union_finalbin.ibin[jj];
+                const double weight = union_mweight.weights[jj];
 
                 npairs[ibin]++;
                 if(need_savg) {
                     savg[ibin] += union_msep.sep[jj];
                 }
                 if(need_weightavg){
-                    const DOUBLE weight = union_mweight.weights[jj];
+                    //const double weight = union_mweight.weights[jj];
                     weightavg[ibin] += weight;
                 }
+                //TODO: generalize
+                projpairs[ibin] += weight;
             }
         }//SSE j loop
 
         //Take care of the remainder
         for(;j<N1;j++) {
-            const DOUBLE parx = xpos + *localx1;
-            const DOUBLE pary = ypos + *localy1;
-            const DOUBLE parz = zpos + *localz1;
+            const double parx = xpos + *localx1;
+            const double pary = ypos + *localy1;
+            const double parz = zpos + *localz1;
 
-            const DOUBLE perpx = xpos - *localx1;
-            const DOUBLE perpy = ypos - *localy1;
-            const DOUBLE perpz = zpos - *localz1;
+            const double perpx = xpos - *localx1;
+            const double perpy = ypos - *localy1;
+            const double perpz = zpos - *localz1;
 
             //parx*perpx + pary*perpy + parz*perpz == (x1^2 + y1^2 + z1^2) - (x2^2 + y2^2 + z2^2) == d1^2 - d2^2
-            const DOUBLE s_dot_l = dpos*dpos - (*locald1) * (*locald1);
+            const double s_dot_l = dpos*dpos - (*locald1) * (*locald1);
             localx1++;localy1++;localz1++;locald1++;
 
             for(int w = 0; w < pair.num_weights; w++){
                 pair.weights1[w].d = *local_w1.weights[w]++;
             }
 
-            const DOUBLE sqr_s = perpx*perpx + perpy*perpy + perpz*perpz;
+            const double sqr_s = perpx*perpx + perpy*perpy + perpz*perpz;
             if(sqr_s >= sqr_smax || sqr_s < sqr_smin) continue;
 
-            const DOUBLE norm_l = (parx*parx + pary*pary + parz*parz);
-            const DOUBLE sqr_s_dot_l = s_dot_l * s_dot_l;
-            const DOUBLE sqr_mu = sqr_s_dot_l/(norm_l * sqr_s);
+            const double norm_l = (parx*parx + pary*pary + parz*parz);
+            const double sqr_s_dot_l = s_dot_l * s_dot_l;
+            const double sqr_mu = sqr_s_dot_l/(norm_l * sqr_s);
             const int mubin  = (sqr_mu >= sqr_mumax) ? nmu_bins:(int) (SQRT(sqr_mu)*inv_dmu);
-            DOUBLE s, pairweight;
+            double s, pairweight;
             if(need_savg) {
                 s = SQRT(sqr_s);
             }
@@ -699,6 +739,8 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
                     if(need_weightavg){
                         weightavg[ibin] += pairweight;
                     }
+                    //TODO: generalize
+                    projpairs[ibin] += pairweight;
                     break;
                 }
             }
@@ -714,6 +756,13 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
             src_weightavg[i] += weightavg[i];
         }
     }
+    for(int i=0;i<nprojbins;i++) {
+        src_projpairs[i] += projpairs[i];
+        for(int j=0;j<nprojbins;j++) {
+            src_projpairs_tensor[i*nprojbins+j] += projpairs_tensor[i*nprojbins+j];
+        }
+    }
+
 
     return EXIT_SUCCESS;
 }
@@ -721,14 +770,15 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_DOUBLE(const int64_t N0, 
 
 
 
-static inline int countpairs_s_mu_mocks_fallback_DOUBLE(const int64_t N0, DOUBLE *x0, DOUBLE *y0, DOUBLE *z0, DOUBLE *d0, const weight_struct_DOUBLE *weights0,
-                                                        const int64_t N1, DOUBLE *x1, DOUBLE *y1, DOUBLE *z1, DOUBLE *d1, const weight_struct_DOUBLE *weights1,
+static inline int countpairs_s_mu_mocks_fallback_double(const int64_t N0, double *x0, double *y0, double *z0, double *d0, const weight_struct_double *weights0,
+                                                        const int64_t N1, double *x1, double *y1, double *z1, double *d1, const weight_struct_double *weights1,
                                                         const int same_cell,
                                                         const int fast_divide,
-                                                        const DOUBLE smax, const DOUBLE smin, const int nsbin,
-                                                        const int nmu_bins, const DOUBLE *supp_sqr, const DOUBLE mu_max,
-                                                        DOUBLE *src_savg, uint64_t *src_npairs,
-                                                        DOUBLE *src_weightavg, const weight_method_t weight_method)
+                                                        const double smax, const double smin, const int nsbin,
+                                                        const int nmu_bins, const double *supp_sqr, const double mu_max,
+                                                        double *src_savg, uint64_t *src_npairs, double *src_projpairs,
+                                                        double *src_projpairs_tensor,
+                                                        double *src_weightavg, const weight_method_t weight_method)
 {
     if(N0 == 0 || N1 == 0) {
         return EXIT_SUCCESS;
@@ -743,15 +793,16 @@ static inline int countpairs_s_mu_mocks_fallback_DOUBLE(const int64_t N0, DOUBLE
 
     (void) fast_divide;//unused parameter but required to keep the same function signature amongst the kernels
 
-    const DOUBLE sqr_smax  = smax*smax;
-    const DOUBLE sqr_smin  = smin*smin;
-    const DOUBLE sqr_mumax = mu_max*mu_max;
+    const double sqr_smax  = smax*smax;
+    const double sqr_smin  = smin*smin;
+    const double sqr_mumax = mu_max*mu_max;
 
     /*----------------- FALLBACK CODE --------------------*/
     const int64_t totnbins = (nmu_bins+1)*(nsbin+1);
-
+    const int64_t nprojbins = totnbins;
     uint64_t npairs[totnbins];
-    DOUBLE savg[totnbins], weightavg[totnbins];
+    double savg[totnbins], weightavg[totnbins], projpairs[nprojbins];
+    double projpairs_tensor[nprojbins*nprojbins];
     for(int i=0;i<totnbins;i++) {
         npairs[i] = ZERO;
         if(need_savg) {
@@ -761,29 +812,36 @@ static inline int countpairs_s_mu_mocks_fallback_DOUBLE(const int64_t N0, DOUBLE
             weightavg[i]=ZERO;
         }
     }
+    for(int i=0;i<nprojbins;i++) {
+        projpairs[i] = ZERO;
+        for(int j=0;j<nprojbins;j++) {
+            projpairs_tensor[i*nprojbins+j] = ZERO;
+        }
+    }
+
 
     // A copy whose pointers we can advance
-    weight_struct_DOUBLE local_w0 = {.weights={NULL}, .num_weights=0},
+    weight_struct_double local_w0 = {.weights={NULL}, .num_weights=0},
                          local_w1 = {.weights={NULL}, .num_weights=0};
-    pair_struct_DOUBLE pair = {.num_weights=0};
-    weight_func_t_DOUBLE weight_func = NULL;
+    pair_struct_double pair = {.num_weights=0};
+    weight_func_t_double weight_func = NULL;
     if(need_weightavg){
         // Same particle list, new copy of num_weights pointers into that list
         local_w0 = *weights0;
         local_w1 = *weights1;
         pair.num_weights = local_w0.num_weights;
-        weight_func = get_weight_func_by_method_DOUBLE(weight_method);
+        weight_func = get_weight_func_by_method_double(weight_method);
     }
 
-    const DOUBLE dmu = mu_max/(DOUBLE) nmu_bins;
-    const DOUBLE inv_dmu = 1.0/dmu;
+    const double dmu = mu_max/(double) nmu_bins;
+    const double inv_dmu = 1.0/dmu;
 
     int64_t nleft=N1, n_off = 0;
     for(int64_t i=0;i<N0;i++) {
-        const DOUBLE xpos = *x0++;
-        const DOUBLE ypos = *y0++;
-        const DOUBLE zpos = *z0++;
-        const DOUBLE dpos = *d0++;//d is the co-moving distance
+        const double xpos = *x0++;
+        const double ypos = *y0++;
+        const double zpos = *z0++;
+        const double dpos = *d0++;//d is the co-moving distance
         for(int w = 0; w < pair.num_weights; w++){
             pair.weights0[w].d = *local_w0.weights[w]++;
         }
@@ -796,7 +854,7 @@ static inline int countpairs_s_mu_mocks_fallback_DOUBLE(const int64_t N0, DOUBLE
             /* For a different cell, all pairs are unique pairs, since two cells are only opened for pairs once (accounted for in the assign_ngb_cells function)*/
             while(nleft > 0) {
                 /*Particles are sorted on 'd', in increasing order */
-                const DOUBLE dz = *d1 - dpos;
+                const double dz = *d1 - dpos;
                 if(dz > -smax) break;
                 d1++; n_off++;
                 nleft--;
@@ -810,39 +868,39 @@ static inline int countpairs_s_mu_mocks_fallback_DOUBLE(const int64_t N0, DOUBLE
             }
         }
 
-        DOUBLE *localx1 = x1 + n_off;
-        DOUBLE *localy1 = y1 + n_off;
-        DOUBLE *localz1 = z1 + n_off;
-        DOUBLE *locald1 = d1;
+        double *localx1 = x1 + n_off;
+        double *localy1 = y1 + n_off;
+        double *localz1 = z1 + n_off;
+        double *locald1 = d1;
         for(int w = 0; w < pair.num_weights; w++){
             local_w1.weights[w] = weights1->weights[w] + n_off;
         }
 
         for(int64_t j=0;j<nleft;j++){
-            const DOUBLE parx = xpos + *localx1;
-            const DOUBLE pary = ypos + *localy1;
-            const DOUBLE parz = zpos + *localz1;
+            const double parx = xpos + *localx1;
+            const double pary = ypos + *localy1;
+            const double parz = zpos + *localz1;
 
-            const DOUBLE perpx = xpos - *localx1;
-            const DOUBLE perpy = ypos - *localy1;
-            const DOUBLE perpz = zpos - *localz1;
+            const double perpx = xpos - *localx1;
+            const double perpy = ypos - *localy1;
+            const double perpz = zpos - *localz1;
 
             //parx*perpx + pary*perpy + parz*perpz == (x1^2 + y1^2 + z1^2) - (x2^2 + y2^2 + z2^2) == d1^2 - d2^2
-            const DOUBLE s_dot_l = dpos*dpos - (*locald1) * (*locald1);
+            const double s_dot_l = dpos*dpos - (*locald1) * (*locald1);
             localx1++;localy1++;localz1++;locald1++;
 
             for(int w = 0; w < pair.num_weights; w++){
                 pair.weights1[w].d = *local_w1.weights[w]++;
             }
 
-            const DOUBLE sqr_s = perpx*perpx + perpy*perpy + perpz*perpz;
+            const double sqr_s = perpx*perpx + perpy*perpy + perpz*perpz;
             if(sqr_s >= sqr_smax || sqr_s < sqr_smin) continue;
 
-            const DOUBLE sqr_l = (parx*parx + pary*pary + parz*parz);
-            const DOUBLE sqr_s_dot_l = s_dot_l * s_dot_l;
-            const DOUBLE sqr_mu = sqr_s_dot_l/(sqr_l * sqr_s);
+            const double sqr_l = (parx*parx + pary*pary + parz*parz);
+            const double sqr_s_dot_l = s_dot_l * s_dot_l;
+            const double sqr_mu = sqr_s_dot_l/(sqr_l * sqr_s);
             const int mubin  = (sqr_mu >= sqr_mumax) ? nmu_bins:(int) (SQRT(sqr_mu)*inv_dmu);
-            DOUBLE s, pairweight;
+            double s, pairweight;
             if(need_savg) {
                 s = SQRT(sqr_s);
             }
@@ -868,8 +926,11 @@ static inline int countpairs_s_mu_mocks_fallback_DOUBLE(const int64_t N0, DOUBLE
                     if(need_weightavg){
                         weightavg[ibin] += pairweight;
                     }
+                    // TODO: generalize
+                    projpairs[ibin] += pairweight;
                     break;
                 }
+
             }//finding kbin
         }//j loop over second set of particles
     }//i loop over first set of particles
@@ -881,6 +942,12 @@ static inline int countpairs_s_mu_mocks_fallback_DOUBLE(const int64_t N0, DOUBLE
         }
         if(need_weightavg){
             src_weightavg[i] += weightavg[i];
+        }
+    }
+    for(int i=0;i<nprojbins;i++) {
+        src_projpairs[i] += projpairs[i];
+        for(int j=0;j<nprojbins;j++) {
+            src_projpairs_tensor[i*nprojbins+j] += projpairs_tensor[i*nprojbins+j];
         }
     }
 

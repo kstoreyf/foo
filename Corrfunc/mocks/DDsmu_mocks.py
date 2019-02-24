@@ -300,11 +300,17 @@ def DDsmu_mocks(autocorr, cosmology, nthreads, mu_max, nmu_bins, binfile,
                                   max_cells_per_dim=max_cells_per_dim,
                                   c_api_timer=c_api_timer,
                                   isa=integer_isa, **kwargs)
+        print(extn_results)
     if extn_results is None:
         msg = "RuntimeError occurred"
         raise RuntimeError(msg)
     else:
-        extn_results, api_time = extn_results
+        extn_results, proj, proj_tensor, api_time = extn_results
+
+    print("Results:")
+    print(extn_results)
+    print(proj)
+    print(proj_tensor)
 
     if delete_after_use:
         import os
@@ -319,6 +325,7 @@ def DDsmu_mocks(autocorr, cosmology, nthreads, mu_max, nmu_bins, binfile,
 
     nbin = len(extn_results)
     results = np.zeros(nbin, dtype=results_dtype)
+
     for ii, r in enumerate(extn_results):
         results['smin'][ii] = r[0]
         results['smax'][ii] = r[1]
@@ -328,9 +335,9 @@ def DDsmu_mocks(autocorr, cosmology, nthreads, mu_max, nmu_bins, binfile,
         results['weightavg'][ii] = r[5]
 
     if not c_api_timer:
-        return results
+        return results, proj
     else:
-        return results, api_time
+        return results, proj, proj_tensor, api_time
 
 if __name__ == '__main__':
     import doctest

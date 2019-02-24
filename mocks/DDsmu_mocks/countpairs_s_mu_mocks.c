@@ -38,6 +38,7 @@ int countpairs_mocks_s_mu(const int64_t ND1, void *phi1, void *theta1, void *czD
                           struct config_options *options,
                           struct extra_options *extra)
 {
+	printf("yo count\n");
     if( ! (options->float_type == sizeof(float) || options->float_type == sizeof(double))){
         fprintf(stderr,"ERROR: In %s> Can only handle doubles or floats. Got an array of size = %zu\n",
                 __FUNCTION__, options->float_type);

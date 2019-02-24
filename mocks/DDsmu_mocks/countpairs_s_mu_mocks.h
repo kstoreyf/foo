@@ -18,6 +18,8 @@ extern "C" {
     //define the results structure
     typedef struct{
         uint64_t *npairs;
+        double *projpairs;
+        double *projpairs_tensor;
         double *supp;
         double *savg;
         double mu_max;

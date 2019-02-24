@@ -1676,6 +1676,9 @@ static PyObject *countpairs_countpairs_s_mu_mocks(PyObject *self, PyObject *args
 
     /* Build the output list */
     PyObject *ret = PyList_New(0);//create an empty list
+    PyObject *projret = PyList_New(0);//create an empty list
+    PyObject *projtensorret = PyList_New(0);//create an empty list
+
     double rlow=results.supp[0];
     const double dmu = mu_max/(double)results.nmu_bins ;
 
@@ -1691,8 +1694,31 @@ static PyObject *countpairs_countpairs_s_mu_mocks(PyObject *self, PyObject *args
         }
         rlow=results.supp[i];
     }
+
+    //TODO: generalize
+    const int nprojbins = results.nsbin-1 * results.nmu_bins;
+    //for(int i=0;i<nprojbins;i++){
+    for(int i=1;i<results.nsbin;i++) {
+        for(int j=0;j<results.nmu_bins;j++) {
+            const int bin_index = i*(results.nmu_bins + 1) + j;
+            PyObject *projitem = NULL;
+            projitem = Py_BuildValue("d", results.projpairs[bin_index]);
+            PyList_Append(projret, projitem);
+            Py_XDECREF(projitem);
+
+            for(int ii=1;ii<results.nsbin;ii++) {
+                for(int jj=0;jj<results.nmu_bins;jj++) {
+                    const int bin_index2 = ii*(results.nmu_bins + 1) + jj;
+                    PyObject *projtensoritem = NULL;
+                    projtensoritem = Py_BuildValue("d", results.projpairs_tensor[bin_index*nprojbins+bin_index2]);
+                    PyList_Append(projtensorret, projtensoritem);
+                    Py_XDECREF(projtensoritem);
+                }
+            }
+        }
+    }
     free_results_mocks_s_mu(&results);
-    return Py_BuildValue("(Od)", ret, c_api_time);
+    return Py_BuildValue("(OOOd)", ret, projret, projtensorret, c_api_time);
 }
 
 static PyObject *countpairs_countpairs_theta_mocks(PyObject *self, PyObject *args, PyObject *kwargs)
