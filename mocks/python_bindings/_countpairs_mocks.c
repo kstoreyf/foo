@@ -1696,27 +1696,43 @@ static PyObject *countpairs_countpairs_s_mu_mocks(PyObject *self, PyObject *args
     }
 
     //TODO: generalize
-    const int nprojbins = results.nsbin-1 * results.nmu_bins;
-    //for(int i=0;i<nprojbins;i++){
-    for(int i=1;i<results.nsbin;i++) {
-        for(int j=0;j<results.nmu_bins;j++) {
-            const int bin_index = i*(results.nmu_bins + 1) + j;
-            PyObject *projitem = NULL;
-            projitem = Py_BuildValue("d", results.projpairs[bin_index]);
-            PyList_Append(projret, projitem);
-            Py_XDECREF(projitem);
+    //const int nprojbins = results.nsbin-1 * results.nmu_bins;
+    //printf("results.nbin: %d\n", results.nsbin);
+    const int nprojbins = results.nsbin-1;
 
-            for(int ii=1;ii<results.nsbin;ii++) {
-                for(int jj=0;jj<results.nmu_bins;jj++) {
-                    const int bin_index2 = ii*(results.nmu_bins + 1) + jj;
-                    PyObject *projtensoritem = NULL;
-                    projtensoritem = Py_BuildValue("d", results.projpairs_tensor[bin_index*nprojbins+bin_index2]);
-                    PyList_Append(projtensorret, projtensoritem);
-                    Py_XDECREF(projtensoritem);
-                }
-            }
+    for(int i=0;i<nprojbins;i++) {
+        PyObject *projitem = NULL;
+        projitem = Py_BuildValue("d", results.projpairs[i]);
+        PyList_Append(projret, projitem);
+        Py_XDECREF(projitem);
+
+        for(int j=0;j<nprojbins;j++) {
+            PyObject *projtensoritem = NULL;
+            projtensoritem = Py_BuildValue("d", results.projpairs_tensor[i*nprojbins+j]);
+            PyList_Append(projtensorret, projtensoritem);
+            Py_XDECREF(projtensoritem);
+
         }
     }
+//    for(int i=1;i<results.nsbin;i++) {
+//        for(int j=0;j<results.nmu_bins;j++) {
+//            const int bin_index = i*(results.nmu_bins + 1) + j;
+//            PyObject *projitem = NULL;
+//            projitem = Py_BuildValue("d", results.projpairs[bin_index]);
+//            PyList_Append(projret, projitem);
+//            Py_XDECREF(projitem);
+//
+//            for(int ii=1;ii<results.nsbin;ii++) {
+//                for(int jj=0;jj<results.nmu_bins;jj++) {
+//                    const int bin_index2 = ii*(results.nmu_bins + 1) + jj;
+//                    PyObject *projtensoritem = NULL;
+//                    projtensoritem = Py_BuildValue("d", results.projpairs_tensor[bin_index*nprojbins+bin_index2]);
+//                    PyList_Append(projtensorret, projtensoritem);
+//                    Py_XDECREF(projtensoritem);
+//                }
+//            }
+//        }
+//    }
     free_results_mocks_s_mu(&results);
     return Py_BuildValue("(OOOd)", ret, projret, projtensorret, c_api_time);
 }

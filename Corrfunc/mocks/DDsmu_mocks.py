@@ -334,10 +334,17 @@ def DDsmu_mocks(autocorr, cosmology, nthreads, mu_max, nmu_bins, binfile,
         results['npairs'][ii] = r[4]
         results['weightavg'][ii] = r[5]
 
+    proj = np.array(proj)
+    nprojbins = len(proj)
+    projt = np.zeros((nprojbins, nprojbins))
+    for i in range(nprojbins):
+        for j in range(nprojbins):
+            projt[i][j] = proj_tensor[i*nprojbins+j]
+
     if not c_api_timer:
-        return results, proj
+        return results, proj, projt
     else:
-        return results, proj, proj_tensor, api_time
+        return results, proj, projt, api_time
 
 if __name__ == '__main__':
     import doctest

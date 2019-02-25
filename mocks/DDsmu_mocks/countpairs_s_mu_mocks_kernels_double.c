@@ -49,12 +49,10 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_double(const int64_t N0, 
 
     const int64_t totnbins = (nmu_bins+1)*(nsbin+1);
     //TODO: make nprojbins parameter
-    const int64_t nprojbins = totnbins;
+    const int64_t nprojbins = nsbin-1;
     const double sqr_mumax = mu_max*mu_max;
     const double sqr_smax  = smax*smax;
     const double sqr_smin  = smin*smin;
-
-	//printf("yo double\n");
 
     AVX_FLOATS m_supp_sqr[nsbin];
     AVX_FLOATS m_kbin[nsbin];
@@ -314,6 +312,8 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_double(const int64_t N0, 
             union int8 union_finalbin;
             union_finalbin.m_ibin = AVX_TRUNCATE_FLOAT_TO_INT(m_binproduct);
 
+            // proj index
+
 
 
 #if  __INTEL_COMPILER
@@ -332,9 +332,30 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_double(const int64_t N0, 
                     weightavg[ibin] += weight;
                 }
                 //TODO: separate when doing general proj
-                projpairs[ibin] += weight;
+                //projpairs[ibin] += weight;
             }
+
+//            //TODO: where should this go?? smarter way within avx shit?
+//            int ins = -1;
+//            for(int p=0;p<nprojbins-1;p++){
+//                if (m_sqr_s>=m_supp_sqr[p] && m_sqr_s<m_supp_sqr[p+1]){
+//                    ins = p;
+//                    break;
+//                }
+//            }
+//            if (ins>=0 && ins<nprojbins){
+//                projpairs[ins] += 1.0;
+//            }
+//            //outer product to get tensor value
+//            for(int p1=0;p1<nprojbins-1;p1++){
+//                for(int p2=0;p2<nprojbins-1;p2++){
+//                    projpairs_tensor[p1*nprojbins+p2] += projpairs[p1]*projpairs[p2];
+//                }
+//            }
+
         }//AVX j loop
+
+
 
         //Take care of the remainder
         for(;j<N1;j++) {
@@ -397,10 +418,27 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_double(const int64_t N0, 
                         weightavg[ibin] += pairweight;
                     }
                     //TODO: make general
-                    projpairs[ibin] += pairweight;
+                    //projpairs[ibin] += pairweight;
                     break;
                 }
             }
+            //TODO: what's the deal with remainder??
+//            int ins = -1;
+//            for(int p=0;p<nprojbins-1;p++){
+//                if (sqr_s>=supp_sqr[p] && sqr_s<supp_sqr[p+1]){
+//                    ins = p;
+//                    break;
+//                }
+//            }
+//            if (ins>=0 && ins<nprojbins){
+//                projpairs[ins] += 1.0;
+//            }
+//            //outer product to get tensor value
+//            for(int p1=0;p1<nprojbins-1;p1++){
+//                for(int p2=0;p2<nprojbins-1;p2++){
+//                    projpairs_tensor[p1*nprojbins+p2] += projpairs[p1]*projpairs[p2];
+//                }
+//            }
         }//remainder jloop
     }//i-loop
 
@@ -449,7 +487,7 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_double(const int64_t N0, 
     (void) fast_divide; //unused
 
     const int64_t totnbins = (nmu_bins+1)*(nsbin+1);
-    const int64_t nprojbins = totnbins;
+    const int64_t nprojbins = nsbin-1;
     const double sqr_mumax = mu_max*mu_max;
     const double sqr_smax  = smax*smax;
     const double sqr_smin  = smin*smin;
@@ -683,8 +721,26 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_double(const int64_t N0, 
                     weightavg[ibin] += weight;
                 }
                 //TODO: generalize
-                projpairs[ibin] += weight;
+                //projpairs[ibin] += weight;
             }
+
+//            //TODO: where should this go?? smarter way within sse shit?
+//            int ins = -1;
+//            for(int p=0;p<nprojbins-1;p++){
+//                if (m_sqr_s>=m_supp_sqr[p] && m_sqr_s<m_supp_sqr[p+1]){
+//                    ins = p;
+//                    break;
+//                }
+//            }
+//            if (ins>=0 && ins<nprojbins){
+//                projpairs[ins] += 1.0;
+//            }
+//            //outer product to get tensor value
+//            for(int p1=0;p1<nprojbins-1;p1++){
+//                for(int p2=0;p2<nprojbins-1;p2++){
+//                    projpairs_tensor[p1*nprojbins+p2] += projpairs[p1]*projpairs[p2];
+//                }
+//            }
         }//SSE j loop
 
         //Take care of the remainder
@@ -740,10 +796,27 @@ static inline int countpairs_s_mu_mocks_sse_intrinsics_double(const int64_t N0, 
                         weightavg[ibin] += pairweight;
                     }
                     //TODO: generalize
-                    projpairs[ibin] += pairweight;
+                    //projpairs[ibin] += pairweight;
                     break;
                 }
             }
+//            //TODO: where should this go?? smarter way within sse shit?
+//            int ins = -1;
+//            for(int p=0;p<nprojbins-1;p++){
+//                if (sqr_s>=supp_sqr[p] && sqr_s<supp_sqr[p+1]){
+//                    ins = p;
+//                    break;
+//                }
+//            }
+//            if (ins>=0 && ins<nprojbins){
+//                projpairs[ins] += 1.0;
+//            }
+//            //outer product to get tensor value
+//            for(int p1=0;p1<nprojbins-1;p1++){
+//                for(int p2=0;p2<nprojbins-1;p2++){
+//                    projpairs_tensor[p1*nprojbins+p2] += projpairs[p1]*projpairs[p2];
+//                }
+//            }
         }//remainder jloop
     }//i-loop
 
@@ -799,7 +872,8 @@ static inline int countpairs_s_mu_mocks_fallback_double(const int64_t N0, double
 
     /*----------------- FALLBACK CODE --------------------*/
     const int64_t totnbins = (nmu_bins+1)*(nsbin+1);
-    const int64_t nprojbins = totnbins;
+    //printf("%d\n", nsbin);
+    const int64_t nprojbins = nsbin-1;
     uint64_t npairs[totnbins];
     double savg[totnbins], weightavg[totnbins], projpairs[nprojbins];
     double projpairs_tensor[nprojbins*nprojbins];
@@ -927,11 +1001,38 @@ static inline int countpairs_s_mu_mocks_fallback_double(const int64_t N0, double
                         weightavg[ibin] += pairweight;
                     }
                     // TODO: generalize
-                    projpairs[ibin] += pairweight;
+                    //projpairs[ibin] += pairweight;
                     break;
                 }
 
             }//finding kbin
+
+            //TODO: now only fallback, implement in faster ones
+            double u[nprojbins];
+            int ins = -1;
+            for(int p=0;p<nprojbins;p++){
+                u[p] = ZERO;
+                if (sqr_s>=supp_sqr[p] && sqr_s<supp_sqr[p+1]){
+                    ins = p;
+                }
+            }
+            if (ins>=0 && ins<nprojbins){
+                u[ins] = 1.0;
+            }
+            //#magic - TODO, find better solution (was getting e-310s)
+            double tiny = 1.0e-16;
+            //outer product to get tensor value
+            for(int p1=0;p1<nprojbins;p1++){
+                projpairs[p1] += u[p1];
+                for(int p2=0;p2<nprojbins;p2++){
+                    double uval = u[p1]*u[p2];
+                    // if value is basically zero, don't bother adding (and breaks ZERO)
+                    if (uval>tiny || uval<-tiny){
+                        projpairs_tensor[p1*nprojbins+p2] += uval;
+                    }
+                }
+            }
+
         }//j loop over second set of particles
     }//i loop over first set of particles
 
