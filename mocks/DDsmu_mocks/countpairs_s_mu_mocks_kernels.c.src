@@ -24,7 +24,6 @@
 #include "avx_calls.h"
 
 
-printf("yo\n")
 static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, DOUBLE *x0, DOUBLE *y0, DOUBLE *z0, DOUBLE *d0, const weight_struct_DOUBLE *weights0,
                                                               const int64_t N1, DOUBLE *x1, DOUBLE *y1, DOUBLE *z1, DOUBLE *d1, const weight_struct_DOUBLE *weights1,
                                                               const int same_cell,
@@ -49,8 +48,6 @@ static inline int countpairs_s_mu_mocks_avx_intrinsics_DOUBLE(const int64_t N0, 
     const DOUBLE sqr_mumax = mu_max*mu_max;
     const DOUBLE sqr_smax  = smax*smax;
     const DOUBLE sqr_smin  = smin*smin;
-	
-	printf("yo2\n")
 
     AVX_FLOATS m_supp_sqr[nsbin];
     AVX_FLOATS m_kbin[nsbin];
