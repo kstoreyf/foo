@@ -688,7 +688,7 @@ int countpairs_mocks_s_mu_double(const int64_t ND1, double *ra1, double *dec1, d
                 all_weightavg[tid][i] = weightavg[i];
             }
         }
-        for int i=0;i<nprojbins;i++) {
+        for (int i=0;i<nprojbins;i++) {
             all_projpairs[tid][i] = projpairs[i];
             for(int j=0;j<nprojbins;j++) {
                 all_projpairs_tensor[tid][i*nprojbins+j] = projpairs_tensor[i*nprojbins+j];
