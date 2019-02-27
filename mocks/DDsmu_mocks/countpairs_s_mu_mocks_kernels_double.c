@@ -1022,7 +1022,10 @@ static inline int countpairs_s_mu_mocks_fallback_double(const int64_t N0, double
 
             //proj_struct_double projdata = {.nprojbins=nprojbins, .sqr_s=sqr_s, .supp_sqr=supp_sqr};
             //proj_func = tophat_double;
-            proj_struct_double projdata = {.nprojbins=nprojbins, .nsbins=nsbin, .sqr_s=sqr_s, .supp_sqr=supp_sqr};
+
+            //number of edges vs bins
+            int nsbins = nsbin-1;
+            proj_struct_double projdata = {.nprojbins=nprojbins, .nsbins=nsbins, .sqr_s=sqr_s, .supp_sqr=supp_sqr};
 
             double u[nprojbins];
             //u = proj_func(projdata);
@@ -1041,6 +1044,8 @@ static inline int countpairs_s_mu_mocks_fallback_double(const int64_t N0, double
                     }
                 }
             }
+//            printf("pt[0] %f\n", projpairs_tensor[0]);
+//            printf("pt[last] %f\n", projpairs_tensor[nprojbins*nprojbins-1]);
 
         }//j loop over second set of particles
     }//i loop over first set of particles

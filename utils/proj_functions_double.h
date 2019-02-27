@@ -65,14 +65,23 @@ static inline void compute_amplitudes(int nprojbins, int nd1, int nd2, int nr1, 
     double numerator[nprojbins];
     double qqnorm[nprojbins*nprojbins];
     for (int i=0; i<nprojbins; i++){
-        double ddnorm = dd[i]/(nd1*nd2);
-        double drnorm = dr[i]/(nd1*nr2);
-        double rdnorm = rd[i]/(nr1*nd2);
-        double rrnorm = rr[i]/(nr1*nr2);
+        double ddnorm = dd[i]/((double)nd1*(double)nd2);
+        double drnorm = dr[i]/((double)nd1*(double)nr2);
+        double rdnorm = rd[i]/((double)nr1*(double)nd2);
+        double rrnorm = rr[i]/((double)nr1*(double)nr2);
         numerator[i] = ddnorm - drnorm - rdnorm + rrnorm;
         for (int j=0; j<nprojbins; j++){
-            qqnorm[i*nprojbins+j] = qq[i*nprojbins+j]/(nr1*nr2);
+            printf("%f", qq[i*nprojbins+j]);
+            qqnorm[i*nprojbins+j] = qq[i*nprojbins+j]/((double)nr1*(double)nr2);
         }
+    }
+
+    printf("qqnorm:\n");
+    for(int i=0;i<nprojbins;i++){
+        for (int j=0; j<nprojbins; j++){
+            printf(" %f", qqnorm[i*nprojbins+j]);
+        }
+        printf("\n");
     }
 
 	int s;
