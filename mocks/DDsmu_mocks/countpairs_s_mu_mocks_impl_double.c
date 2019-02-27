@@ -531,8 +531,8 @@ int countpairs_mocks_s_mu_double(const int64_t ND1, double *ra1, double *dec1, d
     if(need_weightavg) {
       all_weightavg = (double **) matrix_calloc(sizeof(double),numthreads,totnbins);
     }
-    all_projpairs = (double **) matrix_calloc(sizeof(double),numthreads,nprojbins);
-    all_projpairs_tensor = (double **) matrix_calloc(sizeof(double),numthreads,nprojbins*nprojbins);
+    double **all_projpairs = (double **) matrix_calloc(sizeof(double),numthreads,nprojbins);
+    double **all_projpairs_tensor = (double **) matrix_calloc(sizeof(double),numthreads,nprojbins*nprojbins);
 
 
 #else //USE_OMP
@@ -586,7 +586,7 @@ int countpairs_mocks_s_mu_double(const int64_t ND1, double *ra1, double *dec1, d
                 weightavg[i] = ZERO;
             }
         }
-        for int i=0;i<nprojbins;i++) {
+        for(int i=0;i<nprojbins;i++) {
             projpairs[i] = ZERO;
             for(int j=0;j<nprojbins;j++) {
                 projpairs_tensor[i*nprojbins+j] = ZERO;
