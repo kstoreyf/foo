@@ -575,7 +575,7 @@ int countpairs_mocks_s_mu_double(const int64_t ND1, double *ra1, double *dec1, d
         const int tid = omp_get_thread_num();
         uint64_t npairs[totnbins];
         double savg[totnbins], weightavg[totnbins], projpairs[nprojbins];
-        double projpairs_tensor[nprojbins][nprojbins];
+        double projpairs_tensor[nprojbins*nprojbins];
 
         for(int i=0;i<totnbins;i++) {
             npairs[i] = 0;
