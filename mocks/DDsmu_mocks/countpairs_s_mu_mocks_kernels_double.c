@@ -23,6 +23,7 @@
 #include "utils.h"
 
 #include "weight_functions_double.h"
+#include "proj_functions_double.h"
 
 #if defined(__AVX__)
 #include "avx_calls.h"
@@ -1007,18 +1008,26 @@ static inline int countpairs_s_mu_mocks_fallback_double(const int64_t N0, double
 
             }//finding kbin
 
-            //TODO: now only fallback, implement in faster ones
+//            weight_struct_double local_w0 = {.weights={NULL}, .num_weights=0},
+//                                 local_w1 = {.weights={NULL}, .num_weights=0};
+//            pair_struct_double pair = {.num_weights=0};
+//            weight_func_t_double weight_func = NULL;
+//            if(need_weightavg){
+//                // Same particle list, new copy of num_weights pointers into that list
+//                local_w0 = *weights0;
+//                local_w1 = *weights1;
+//                pair.num_weights = local_w0.num_weights;
+//                weight_func = get_weight_func_by_method_double(weight_method);
+//            }
+
+            //proj_struct_double projdata = {.nprojbins=nprojbins, .sqr_s=sqr_s, .supp_sqr=supp_sqr};
+            //proj_func = tophat_double;
+            proj_struct_double projdata = {.nprojbins=nprojbins, .nsbins=nsbin, .sqr_s=sqr_s, .supp_sqr=supp_sqr};
+
             double u[nprojbins];
-            int ins = -1;
-            for(int p=0;p<nprojbins;p++){
-                u[p] = ZERO;
-                if (sqr_s>=supp_sqr[p] && sqr_s<supp_sqr[p+1]){
-                    ins = p;
-                }
-            }
-            if (ins>=0 && ins<nprojbins){
-                u[ins] = 1.0;
-            }
+            //u = proj_func(projdata);
+            tophat_double(&projdata, u);
+
             //#magic - TODO, find better solution (was getting e-310s)
             double tiny = 1.0e-16;
             //outer product to get tensor value

@@ -972,7 +972,53 @@ def sys_pipes():
     kwargs = {'stdout':None if sys.stdout.isatty() else sys.stdout,
               'stderr':None if sys.stderr.isatty() else sys.stderr }
     return wurlitzer.pipes(**kwargs)
-    
+
+
+def compute_amps(nprojbins, nd1, nd2, nr1, nr2, dd, dr, rd, rr, qq):
+
+        try:
+            from Corrfunc._countpairs_mocks import convert_3d_proj_counts_to_amplitude as \
+                amp_extn
+        except ImportError:
+            msg = "Could not import the C extension for computing amplitudes."
+            raise ImportError(msg)
+
+        import numpy as np
+        from Corrfunc.utils import translate_isa_string_to_enum, fix_ra_dec, \
+            return_file_with_rbins, sys_pipes
+        from future.utils import bytes_to_native_str
+
+        print('Computing amplitudes (Corrfunc/utils)')
+        with sys_pipes():
+            #TODO: allow passing kwargs
+            print("bins",nprojbins)
+            amps = amp_extn(nprojbins, nd1, nd2, nr1, nr2, dd, dr, rd, rr, qq)
+        #amps = amps[0]
+        print(amps)
+        return amps
+
+
+def evaluate_xi(nprojbins, a, nsvals, svals, nsbins, sbins):
+    try:
+        from Corrfunc._countpairs_mocks import evaluate_xi as \
+            eval_extn
+    except ImportError:
+        msg = "Could not import the C extension for computing amplitudes."
+        raise ImportError(msg)
+
+    import numpy as np
+    from Corrfunc.utils import translate_isa_string_to_enum, fix_ra_dec, \
+        return_file_with_rbins, sys_pipes
+    from future.utils import bytes_to_native_str
+
+    print('Evaluating xi (Corrfunc/utils)')
+    with sys_pipes():
+        # TODO: allow passing kwargs
+        xi = eval_extn(nprojbins, a, nsvals, svals, nsbins, sbins)
+
+    return xi
+
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()

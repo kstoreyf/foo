@@ -26,6 +26,9 @@
 //for unicode characters
 #include "macros.h"
 
+//for projected cf
+#include "proj_functions_double.h"
+
 
 struct module_state {
     PyObject *error;
@@ -66,6 +69,8 @@ static PyObject *countpairs_countpairs_rp_pi_mocks(PyObject *self, PyObject *arg
 static PyObject *countpairs_countpairs_s_mu_mocks(PyObject *self, PyObject *args, PyObject *kwargs);
 static PyObject *countpairs_countpairs_theta_mocks(PyObject *self, PyObject *args, PyObject *kwargs);
 static PyObject *countpairs_countspheres_vpf_mocks(PyObject *self, PyObject *args, PyObject *kwargs);
+static PyObject *countpairs_convert_3d_proj_counts_to_amplitude(PyObject *self, PyObject *args, PyObject *kwargs);
+static PyObject *countpairs_evaluate_xi(PyObject *self, PyObject *args, PyObject *kwargs);
 static PyObject *countpairs_mocks_error_out(PyObject *module, const char *msg);
 
 static PyMethodDef module_methods[] = {
@@ -755,6 +760,8 @@ static PyMethodDef module_methods[] = {
     "                        is_comoving_dist=True)\n"
     "\n"
     },
+    {"convert_3d_proj_counts_to_amplitude"       ,(PyCFunction) countpairs_convert_3d_proj_counts_to_amplitude ,METH_VARARGS | METH_KEYWORDS, "docstring: TODO!"},
+    {"evaluate_xi"       ,(PyCFunction) countpairs_evaluate_xi ,METH_VARARGS | METH_KEYWORDS, "docstring: TODO!"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -2264,4 +2271,238 @@ static PyObject *countpairs_countspheres_vpf_mocks(PyObject *self, PyObject *arg
     free_results_countspheres_mocks(&results);
 
     return Py_BuildValue("(Od)", ret, c_api_time);
+}
+
+
+static PyObject *countpairs_convert_3d_proj_counts_to_amplitude(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    //Error-handling is global in python2 -> stored in struct module_state _struct declared at the top of this file
+#if PY_MAJOR_VERSION < 3
+    (void) self;
+    PyObject *module = NULL;//should not be used -> setting to NULL so any attempts to dereference will result in a crash.
+#else
+    //In python3, self is simply the module object that was returned earlier by init
+    PyObject *module = self;
+#endif
+
+    PyArrayObject *dd_obj=NULL, *dr_obj=NULL, *rd_obj=NULL, *rr_obj=NULL, *qq_obj=NULL;
+
+    int nprojbins, ND1, ND2, NR1, NR2;
+
+    static char *kwlist[] = {
+        "nprojbins",
+        "nd1",
+        "nd2",
+        "nr1",
+        "nr2",
+        "dd",
+        "dr",
+        "rd",
+        "rr",
+        "qq",
+        NULL
+    };
+
+    if ( ! PyArg_ParseTupleAndKeywords(args, kwargs, "iiiiiO!O!O!O!O!", kwlist,
+                                       &nprojbins,&ND1,&ND2,&NR1,&NR2,
+                                       &PyArray_Type,&dd_obj,
+                                       &PyArray_Type,&dr_obj,
+                                       &PyArray_Type,&rd_obj,
+                                       &PyArray_Type,&rr_obj,
+                                       &PyArray_Type,&qq_obj
+                                       )
+
+        ) {
+
+        PyObject_Print(kwargs, stdout, 0);
+        fprintf(stdout, "\n");
+
+        char msg[1024];
+        int len=snprintf(msg, 1024,"ArgumentError: In convert to amplitudes> Could not parse the arguments. Input parameters are: \n");
+
+        /* How many keywords do we have? Subtract 1 because of the last NULL */
+        const size_t nitems = sizeof(kwlist)/sizeof(*kwlist) - 1;
+        int status = print_kwlist_into_msg(msg, 1024, len, kwlist, nitems);
+        if(status != EXIT_SUCCESS) {
+            fprintf(stderr,"Error message does not contain all of the keywords\n");
+        }
+        countpairs_mocks_error_out(module,msg);
+
+        Py_RETURN_NONE;
+    }
+
+     /* Interpret the input objects as numpy arrays. */
+    const int requirements = NPY_ARRAY_IN_ARRAY;
+    PyObject *dd_array = NULL, *dr_array = NULL, *rd_array = NULL, *rr_array = NULL, *qq_array = NULL;
+    dd_array = PyArray_FromArray(dd_obj, NOTYPE_DESCR, requirements);
+    dr_array = PyArray_FromArray(dr_obj, NOTYPE_DESCR, requirements);
+    rd_array = PyArray_FromArray(rd_obj, NOTYPE_DESCR, requirements);
+    rr_array = PyArray_FromArray(rr_obj, NOTYPE_DESCR, requirements);
+    qq_array = PyArray_FromArray(qq_obj, NOTYPE_DESCR, requirements);
+
+    if (dd_array == NULL || dr_array == NULL || rd_array == NULL ||
+        rr_array == NULL || qq_array == NULL ) {
+        Py_XDECREF(dd_array);
+        Py_XDECREF(dr_array);
+        Py_XDECREF(rd_array);
+        Py_XDECREF(rr_array);
+        Py_XDECREF(qq_array);
+        char msg[1024];
+        snprintf(msg, 1024, "TypeError: In %s: Could not convert input to arrays of allowed floating point types (doubles or floats). Are you passing numpy arrays?",
+                 __FUNCTION__);
+        countpairs_mocks_error_out(module, msg);
+        Py_RETURN_NONE;
+    }
+
+    /* Get pointers to the data as C-types. */
+    void *dd=NULL, *dr=NULL, *rd=NULL, *rr=NULL, *qq=NULL;
+
+    dd   = PyArray_DATA((PyArrayObject *) dd_array);
+    dr   = PyArray_DATA((PyArrayObject *) dr_array);
+    rd   = PyArray_DATA((PyArrayObject *) rd_array);
+    rr   = PyArray_DATA((PyArrayObject *) rr_array);
+    qq   = PyArray_DATA((PyArrayObject *) qq_array);
+
+    NPY_BEGIN_THREADS_DEF;
+    NPY_BEGIN_THREADS;
+
+    //ACTUAL FUNCTION
+    double amps[nprojbins];
+    for(int i=0;i<nprojbins;i++){
+        amps[i] = 0;
+    }
+    compute_amplitudes(nprojbins, ND1, ND2, NR1, NR2, dd, dr, rd, rr, qq, amps);
+    printf("Amplitudes:\n");
+    for(int i=0;i<nprojbins;i++){
+        printf(" %f", amps[i]);
+    }
+    printf("\n");
+
+    NPY_END_THREADS;
+
+    /* Clean up. */
+    Py_DECREF(dd_array);Py_DECREF(dr_array);Py_DECREF(rd_array);
+    Py_DECREF(rr_array);Py_DECREF(qq_array);;
+
+    /* Build the output list */
+    PyObject *aret = PyList_New(0);//create an empty list
+
+    for(int i=0;i<nprojbins;i++) {
+        PyObject *aitem = NULL;
+        aitem = Py_BuildValue("d", amps[i]);
+        PyList_Append(aret, aitem);
+        Py_XDECREF(aitem);
+    }
+    //don't think i need to free results bc didn't allocate memory (unless nprojbins gets real big...)
+    return Py_BuildValue("O", aret);
+
+
+}
+
+static PyObject *countpairs_evaluate_xi(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    //Error-handling is global in python2 -> stored in struct module_state _struct declared at the top of this file
+#if PY_MAJOR_VERSION < 3
+    (void) self;
+    PyObject *module = NULL;//should not be used -> setting to NULL so any attempts to dereference will result in a crash.
+#else
+    //In python3, self is simply the module object that was returned earlier by init
+    PyObject *module = self;
+#endif
+
+    PyArrayObject *amps_obj=NULL, *svals_obj=NULL, *sbins_obj=NULL;
+
+    int nprojbins, nsvals, nsbins;
+
+    static char *kwlist[] = {
+        "nprojbins",
+        "amps",
+        "nsvals",
+        "svals",
+        "nsbins",
+        "sbins",
+        NULL
+    };
+
+    if ( ! PyArg_ParseTupleAndKeywords(args, kwargs, "iO!iO!iO!", kwlist,
+                                       &nprojbins,
+                                       &PyArray_Type,&amps_obj,
+                                       &nsvals,
+                                       &PyArray_Type,&svals_obj,
+                                       &nsbins,
+                                       &PyArray_Type,&sbins_obj
+                                       )
+
+        ) {
+
+        PyObject_Print(kwargs, stdout, 0);
+        fprintf(stdout, "\n");
+
+        char msg[1024];
+        int len=snprintf(msg, 1024,"ArgumentError: In evaluate_amps> Could not parse the arguments. Input parameters are: \n");
+
+        /* How many keywords do we have? Subtract 1 because of the last NULL */
+        const size_t nitems = sizeof(kwlist)/sizeof(*kwlist) - 1;
+        int status = print_kwlist_into_msg(msg, 1024, len, kwlist, nitems);
+        if(status != EXIT_SUCCESS) {
+            fprintf(stderr,"Error message does not contain all of the keywords\n");
+        }
+        countpairs_mocks_error_out(module,msg);
+
+        Py_RETURN_NONE;
+    }
+
+     /* Interpret the input objects as numpy arrays. */
+    const int requirements = NPY_ARRAY_IN_ARRAY;
+    PyObject *amps_array = NULL, *svals_array = NULL, *sbins_array = NULL;
+    amps_array = PyArray_FromArray(amps_obj, NOTYPE_DESCR, requirements);
+    svals_array = PyArray_FromArray(svals_obj, NOTYPE_DESCR, requirements);
+    sbins_array = PyArray_FromArray(sbins_obj, NOTYPE_DESCR, requirements);
+
+    if (amps_array == NULL || svals_array == NULL || sbins_array == NULL) {
+        Py_XDECREF(amps_array);
+        Py_XDECREF(svals_array);
+        Py_XDECREF(sbins_array);
+        char msg[1024];
+        snprintf(msg, 1024, "TypeError: In %s: Could not convert input to arrays of allowed floating point types (doubles or floats). Are you passing numpy arrays?",
+                 __FUNCTION__);
+        countpairs_mocks_error_out(module, msg);
+        Py_RETURN_NONE;
+    }
+
+    /* Get pointers to the data as C-types. */
+    void *amps=NULL, *svals=NULL, *sbins=NULL;
+
+    amps    = PyArray_DATA((PyArrayObject *) amps_array);
+    svals   = PyArray_DATA((PyArrayObject *) svals_array);
+    sbins   = PyArray_DATA((PyArrayObject *) sbins_array);
+
+    NPY_BEGIN_THREADS_DEF;
+    NPY_BEGIN_THREADS;
+
+    double xi[nsbins];
+    for(int i=0;i<nsvals;i++){
+        xi[i] = 0;
+    }
+    //ACTUAL FUNCTION
+    evaluate_xi(nprojbins, amps, nsvals, svals, nsbins, sbins, xi);
+
+    NPY_END_THREADS;
+
+    /* Clean up. */
+    Py_DECREF(amps_array);Py_DECREF(svals_array);Py_DECREF(sbins_array);
+
+    /* Build the output list */
+    PyObject *xiret = PyList_New(0);//create an empty list
+
+    for(int i=0;i<nsvals;i++) {
+        PyObject *xiitem = NULL;
+        xiitem = Py_BuildValue("d", xi[i]);
+        PyList_Append(xiret, xiitem);
+        Py_XDECREF(xiitem);
+    }
+    //don't think i need to free results bc didn't allocate memory (unless nprojbins gets real big...)
+    return Py_BuildValue("O", xiret);
+
+
 }
